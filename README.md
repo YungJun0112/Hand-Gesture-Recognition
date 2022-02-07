@@ -21,6 +21,7 @@ Implementing image processing to recognize hand gesture to carry out functions s
 #### Control Audio
 ![Index Thumb Touch](https://github.com/AlexJun0112/Hand-Gesture-Recognition/blob/main/raw/Index%20Thumb%20Touch.PNG)
 ![Control Audio](https://github.com/AlexJun0112/Hand-Gesture-Recognition/blob/main/raw/Control%20Audio.PNG)
+![Cross platform alerts](https://github.com/autopilot-rs/autopy/raw/gh-pages/alerts.png)
 
 Hold your index finger and thumb together for at least 3 seconds, then slowly move them apart
 If you see a line formed between your fingers, you are now able to control your computer audio
