@@ -1,9 +1,3 @@
-# Author: Yong Yung Jun (TARUC)
-# Date: 6 Febuary 2022
-# Description : This python script can be used to recognize hand gesture and carry out functions such as
-#               Play/Pause, Minimize/Maximize screen, On/Off Subtitle, Activate Virtual Mouse
-#               Previous/Next video, Speech to Text Recognition (havent counted progress)
-
 # Import necessary libraries
 from pynput.keyboard import Key, Controller
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
