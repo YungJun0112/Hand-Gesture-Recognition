@@ -2,6 +2,7 @@
 # Date: 6 Febuary 2022
 # Description : This python script can be used to recognize hand gesture and carry out functions such as
 #               Play/Pause, Minimize/Maximize screen, On/Off Subtitle, Activate Virtual Mouse
+#               Previous/Next video, Speech to Text Recognition (havent counted progress)
 
 # Requirements
 # pip install pynput
@@ -9,9 +10,11 @@
 # pip install mediapipe
 # pip install mouse
 # pip install pyautogui
+# pip install SpeechRecognition pydub
+# https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio <- Download pyaudio wheel from this link, cd to the directory and pip install it
 
 # Import necessary libraries
-from pynput.keyboard import Controller
+from pynput.keyboard import Key, Controller
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL
 from ctypes import cast, POINTER
@@ -22,12 +25,14 @@ import math
 from timeit import default_timer as timer
 import mouse
 import pyautogui
+import speech_recognition as sr
 
 # Get the width and height of the computer screen
 widthScreen, heightScreen = pyautogui.size()
 
-# Initialisation of the keyboard and speakers function
+# Initialisation of the keyboard, speakers and speech recognition function
 keyboard = Controller()
+r = sr.Recognizer()
 devices = AudioUtilities.GetSpeakers()
 interface = devices.Activate(
     IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
@@ -62,14 +67,11 @@ def checkList(list):
         return False
 
 
-# If the camera cannot be open, this will be executed
-if not cap.isOpened():
-    print("Cannot open camera")
-    exit()
-
 # Initializing the necessary variables
 timerFlag = False
 startVolFlag = False
+XstateFlag = False
+Xstate = 0
 startTime, endTime = 0, 0
 currentLocX, currentLocY = 0, 0
 previousLocX, previousLocY = 0, 0
@@ -151,13 +153,46 @@ while True:
                 if previousState == [0, 0, 0, 0, 0] and fingers == [0, 0, 0, 0, 1]:
                     keyboard.press('c')  # Subtitle
 
+                 # If the fingers changed from a fist to show the index, middle & ring finger, 'ctrl' & 'cmd' & 'o' button is press to act as On/Off subtitle button
+                if previousState == [0, 0, 0, 0, 0] and fingers == [0, 1, 1, 1, 0]:
+                    keyboard.press(Key.ctrl)  # On-Screen Keyboard
+                    keyboard.press(Key.cmd)
+                    keyboard.press('o')
+                    keyboard.release(Key.ctrl)
+                    keyboard.release(Key.cmd)
+                    keyboard.release('o')
+
+                # If all fingers are up except the thumb, the X-value for the index fingers is taken, named Xstate
+                # The presence of XstateFlag here is to ensure only one value is taken each time
+                if fingers == [0, 1, 1, 1, 1] and XstateFlag == False:
+                    XstateFlag = True
+                    Xstate = LandmarkList[8][1]
+
+                # When the user raises its thumb, the differences between the Xstate and the current index finger X-value is compared
+                # If it is more than positive 200, which indicates the hand moves leftwards, Next Video function is triggered, vice versa
+                if fingers == [1, 1, 1, 1, 1] and XstateFlag == True:
+                    XstateFlag = False
+                    diff = LandmarkList[8][1] - Xstate
+                    print(diff)
+                    if diff > 200:
+                        keyboard.press(Key.shift)  # Next video
+                        keyboard.press('n')
+                        keyboard.release(Key.shift)
+                        keyboard.release('n')
+
+                    elif diff < -200:
+                        keyboard.press(Key.shift)  # Previous video
+                        keyboard.press('p')
+                        keyboard.release(Key.shift)
+                        keyboard.release('p')
+
                 # If the index finger or the index & middle fingers are up, Virtual Mouse function activated
                 if fingers == [0, 1, 0, 0, 0] or fingers == [0, 1, 1, 0, 0]:
                     # Find the interpolation between the screen the the Virtual Mouse frame
                     xInterp = np.interp(
-                        xIndex, (frameResize, widthCam-frameResize), (0, widthScreen))
+                        xMiddle, (frameResize, widthCam-frameResize), (0, widthScreen))
                     yInterp = np.interp(
-                        yIndex, (frameResize, heightCam-frameResize), (0, heightScreen))
+                        yMiddle, (frameResize, heightCam-frameResize), (0, heightScreen))
 
                     # The interpolation value is then undergo smoothing process to prevent flickering effect
                     currentLocX = previousLocX + \
@@ -166,7 +201,7 @@ while True:
                         (yInterp - previousLocY)/smoothing
 
                     # A filled circle is drawn on the index finger tips if virtual mouse function is activated
-                    cv.circle(frame, (xIndex, yIndex), 15,
+                    cv.circle(frame, (xMiddle, yMiddle), 15,
                               (255, 0, 255), cv.FILLED)
                     # A rectangle is drawn to act as the bounding box for the finger to move around to act as the computer mouse
                     cv.rectangle(frame, (100, 100),
@@ -176,11 +211,30 @@ while True:
 
                 # If the index fingers and middle finger touches each other, initiate a left mouse click
                 if fingers == [0, 1, 1, 0, 0]:
-                    length = math.hypot(xIndex - xMiddle, yIndex - yMiddle)
-                    if length < 33:
+                    lengthVmouse = math.hypot(
+                        xMiddle - xIndex, yMiddle - yIndex)
+                    print(lengthVmouse)
+                    if lengthVmouse < 20:
                         mouse.click('left')
 
                 previousState = fingers
+
+                # If the thumbs are up and others are down, activate the Speech-To-Text Recognition
+                if fingers == [1, 0, 0, 0, 1]:
+                    print("Please speak")
+                    with sr.Microphone() as source:
+                        # read the audio data from the microphone for 5 seconds
+                        audio_data = r.record(source, duration=5)
+                        print("Recognizing...")
+                        # convert speech to text
+                        text = r.recognize_google(audio_data)
+                        print(text)
+                        # output the data to the Youtube search bar
+                        keyboard.press('/')
+                        keyboard.type(text)
+                        keyboard.release('/')
+                        keyboard.press(Key.enter)
+                        keyboard.release(Key.enter)
 
             # Control audio function
             # Find the landmarks for thumb
@@ -195,7 +249,7 @@ while True:
                     print("Timer started")
                     timerFlag = True
 
-            # If the thumb and index fingers are released, calculated the time taken 
+            # If the thumb and index fingers are released, calculated the time taken
             if timerFlag == True:
                 if not (length < 50):
                     endTime = timer()
@@ -219,8 +273,9 @@ while True:
                 cv.circle(frame, (CenterX, CenterY), 11,
                           (153, 153, 255), cv.FILLED)
 
-                # Find the interpolation value and smooth it 
-                vol = 5 * round(np.interp(length, [10, 250], [0, 100])/smoothing)
+                # Find the interpolation value and smooth it
+                vol = 5 * \
+                    round(np.interp(length, [10, 250], [0, 100])/smoothing)
                 # Input the interpolation value into the exitList, and move all the values in the list one step back
                 for i in range(18, -1, -1):
                     exitList[i + 1] = exitList[i]
