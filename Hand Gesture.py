@@ -4,15 +4,6 @@
 #               Play/Pause, Minimize/Maximize screen, On/Off Subtitle, Activate Virtual Mouse
 #               Previous/Next video, Speech to Text Recognition (havent counted progress)
 
-# Requirements
-# pip install pynput
-# pip install opencv-contrib-python
-# pip install mediapipe
-# pip install mouse
-# pip install pyautogui
-# pip install SpeechRecognition pydub
-# https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio <- Download pyaudio wheel from this link, cd to the directory and pip install it
-
 # Import necessary libraries
 from pynput.keyboard import Key, Controller
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
